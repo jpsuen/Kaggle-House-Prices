@@ -10,6 +10,7 @@ train <-  read_csv("data/train.csv")
 test <-  read_csv("data/test.csv")
 homeVal <- train$SalePrice
 df <- rbind(train[,-81],test)
+attach(train)
 
 # Clean up NA values
 for (v in names(df)) {
@@ -51,8 +52,8 @@ test$Utilities <- NULL
 
 # Garage
 ## large finished garage
-train$FE.Garage1 <- ifelse(train$GarageArea > mean(train$GarageArea), 1, 0)
-test$FE.Garage1 <- ifelse(test$GarageArea > mean(test$GarageArea), 1, 0)
+train$FE_Garage1 <- ifelse(train$GarageArea > mean(train$GarageArea), 1, 0)
+test$FE_Garage1 <- ifelse(test$GarageArea > mean(test$GarageArea), 1, 0)
 
  
 ###
@@ -62,18 +63,20 @@ test$FE.Garage1 <- ifelse(test$GarageArea > mean(test$GarageArea), 1, 0)
 ###
 
 # Amount of living space
-train$FE.BsmtFin <- ifelse(train$BsmtFinType1 == "Unf", 0, 1)
-test$FE.BsmtFin <- ifelse(test$BsmtFinType1 == "Unf", 0, 1)
-train$FE.BsmtFin2 <- ifelse(train$FE.BsmtFin == 1, train$GrLivArea + train$BsmtFinSF1, train$GrLivArea)
-test$FE.BsmtFin2 <- ifelse(test$FE.BsmtFin == 1, test$GrLivArea + test$BsmtFinSF1, test$GrLivArea)
-train$FE.BsmtFin3 <- log(train$FE.BsmtFin2)
-test$FE.BsmtFin3 <- log(test$FE.BsmtFin2)
-train$FE.QualLiv <- -(train$FE.BsmtFin2 * log(train$OverallQual*.01))
-test$FE.QualLiv <- -(test$FE.BsmtFin2 * log(test$OverallQual*.01))
+train$GrLivArea <- ifelse(train$GrLivArea > 4000, 4000, train$GrLivArea)
+test$GrLivArea <- ifelse(test$GrLivArea > 4000, 4000, test$GrLivArea)
+train$FE_BsmtFin <- ifelse(train$BsmtFinType1 == "Unf", 0, 1)
+test$FE_BsmtFin <- ifelse(test$BsmtFinType1 == "Unf", 0, 1)
+train$FE_BsmtFin2 <- ifelse(train$FE_BsmtFin == 1, train$GrLivArea + train$BsmtFinSF1, train$GrLivArea)
+test$FE_BsmtFin2 <- ifelse(test$FE_BsmtFin == 1, test$GrLivArea + test$BsmtFinSF1, test$GrLivArea)
+train$FE_BsmtFin3 <- log(train$FE_BsmtFin2)
+test$FE_BsmtFin3 <- log(test$FE_BsmtFin2)
+train$FE_QualLiv <- -(train$FE_BsmtFin2 * log(train$OverallQual*.01))
+test$FE_QualLiv <- -(test$FE_BsmtFin2 * log(test$OverallQual*.01))
 
 # Neighborhood
-train$FE.Neighborhood <- NA
-test$FE.Neighborhood <- NA
+train$FE_Neighborhood <- NA
+test$FE_Neighborhood <- NA
 nhWeight <- .8
 lowNH <- c("MeadowV", "IDOTRR", "BrDale", "BrkSide", "Edwards", "OldTown")
 mdlowNH <- c("Sawyer", "Blueste", "SWISU", "NPkVill", "NAmes", "Mitchel")
@@ -83,13 +86,20 @@ highNH <- c("StoneBr", "NridgHt", "NoRidge")
 nhVars <- c("lowNH", "mdlowNH", "mdNH", "mdhighNH","highNH")
 for (i in nhVars){
   v <- get(i)
-  train$FE.Neighborhood <- ifelse(train$Neighborhood %in% v, train$FE.BsmtFin2 * nhWeight, train$FE.Neighborhood)
-  test$FE.Neighborhood <- ifelse(test$Neighborhood %in% v, test$FE.BsmtFin2 * nhWeight, test$FE.Neighborhood)
+  train$FE_Neighborhood <- ifelse(train$Neighborhood %in% v, train$FE_BsmtFin2 * nhWeight, train$FE_Neighborhood)
+  test$FE_Neighborhood <- ifelse(test$Neighborhood %in% v, test$FE_BsmtFin2 * nhWeight, test$FE_Neighborhood)
   nhWeight <- nhWeight + .1
 }
+rm(lowNH)
+rm(mdlowNH)
+rm(mdNH)
+rm(mdhighNH)
+rm(highNH)
+rm(nhVars)
+rm(nhWeight)
 
-train$FE.LandContour <- ifelse(train$LandContour == "Lvl", train$FE.Neighborhood, train$FE.Neighborhood * .7)
-test$FE.LandContour <- ifelse(test$LandContour == "Lvl", test$FE.Neighborhood, test$FE.Neighborhood * .7)
+train$FE_LandContour <- ifelse(train$LandContour == "Lvl", train$FE_Neighborhood, train$FE_Neighborhood * .7)
+test$FE_LandContour <- ifelse(test$LandContour == "Lvl", test$FE_Neighborhood, test$FE_Neighborhood * .7)
 #
 #
 #
@@ -100,8 +110,9 @@ test$FE.LandContour <- ifelse(test$LandContour == "Lvl", test$FE.Neighborhood, t
 
 # Date
 lowMonth = c(2,4:6)
-train$FE.MoSold <- ifelse(train$MoSold %in% lowMonth, 0,1)
-test$FE.MoSold <- ifelse(test$MoSold %in% lowMonth, 0,1)
+train$FE_MoSold <- ifelse(train$MoSold %in% lowMonth, 0,1)
+test$FE_MoSold <- ifelse(test$MoSold %in% lowMonth, 0,1)
+rm(lowMonth)
 
 # Manipulating MSSubClass
 old <- c(30,70)
@@ -121,28 +132,28 @@ rm(res)
 
 # Binary Variables
 # Interaction Variables 
-binaryV  <- list()
-for (a in names(train)) {
-  if (length(unique(train[[a]])) == 2) {
-    binaryV <- c(a, binaryV)
-  }
-}
-
-# # Categorical Variables 
-# v <- c("OverallQual", "Alley", "LotShape", "LandContour","Utilities","LotConfig","LandSlope","Neighborhood","Condition1","Condition2","BldgType","HouseStyle","RoofStyle","RoofMatl","Exterior1st","Exterior2nd","MasVnrType","ExterQual","ExterCond","Foundation","BsmtQual","BsmtCond","BsmtFinType1","BsmtFinType2","Heating","HeatingQC","CentralAir","Electrical","KitchenQual","Functional","FireplaceQu","GarageType","GarageFinish","GarageQual","GarageCond","PavedDrive","PoolQC","Fence","MiscFeature","SaleType","SaleCondition")
-# for(i in names(train)){
-#   if (is.element(i, v)){
-#     for(level in unique(train[[i]])){
-#       train[paste0(i, "_Level_",sub("-","Neg", level))] <- ifelse(train[[i]] == level, 1, 0)
-#       test[paste0(i, "_Level_",sub("-","Neg", level))] <- ifelse(test[[i]] == level, 1, 0)
-#     }
+# binaryV  <- list()
+# for (a in names(train)) {
+#   if (length(unique(train[[a]])) == 2) {
+#     binaryV <- c(a, binaryV)
 #   }
 # }
-# rm(i)
-# rm(v)
-# rm(level)
+# rm(a)
+# rm(binaryV)
 
-
+# # Categorical Variables 
+v <- c("OverallQual", "Alley", "LotShape", "LandContour","Utilities","LotConfig","LandSlope","Neighborhood","Condition1","Condition2","BldgType","HouseStyle","RoofStyle","RoofMatl","Exterior1st","Exterior2nd","MasVnrType","ExterQual","ExterCond","Foundation","BsmtQual","BsmtCond","BsmtFinType1","BsmtFinType2","Heating","HeatingQC","CentralAir","Electrical","KitchenQual","Functional","FireplaceQu","GarageType","GarageFinish","GarageQual","GarageCond","PavedDrive","PoolQC","Fence","MiscFeature","SaleType","SaleCondition")
+for(i in names(train)){
+  if (is.element(i, v)){
+    for(level in unique(train[[i]])){
+      train[paste0(i, "_",sub("-","Neg", level))] <- ifelse(train[[i]] == level, 1, 0)
+      test[paste0(i, "_",sub("-","Neg", level))] <- ifelse(test[[i]] == level, 1, 0)
+    }
+  }
+}
+rm(i)
+rm(v)
+rm(level)
 
 
 # Years Since Remodel
@@ -150,19 +161,29 @@ train$YearRemodSince <- train$YearRemodAdd - train$YearBuilt
 test$YearRemodSince <- test$YearRemodAdd - test$YearBuilt
 train$YearRemodSinceLog <- log(train$YearRemodSince + 1)
 test$YearRemodSinceLog <- log(test$YearRemodSince + 1)
+train$YearRemodSale <- train$YrSold - train$YearRemodAdd
+test$YearRemodSale <- test$YrSold - test$YearRemodAdd
+rec <- c(1:4)
+train$RecentRemod <- ifelse(train$YearRemodSale %in% rec, 1, 0)
+test$RecentRemod <- ifelse(test$YearRemodSale %in% rec, 1, 0)
+rm(rec)
 
 library(forecast)
-attach(train)
 train$SalePrice.BC <- BoxCox(SalePrice, BC.Lambda)
 
-c <- c("Id", "SalePrice", "FE.Neighborhood")
-View(train[,c])
 
-r <- c(1299, 524, 1183,692)
-View(train[r,])
 
-v <- Condition1
-aggregate(SalePrice ~ v, train, mean)
-table(v)
+
+
+
+# c <- c("Id", "SalePrice", "FE_Neighborhood", "RecentRemod", "YearRemodSale")
+# View(train[,c])
+# 
+# r <- c(1299, 524, 1183,692)
+# View(train[r,])
+# 
+# v <- Condition1
+# aggregate(SalePrice ~ v, train, mean)
+# table(v)
 
 

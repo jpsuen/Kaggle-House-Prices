@@ -30,7 +30,10 @@ if (mean(submission$SalePrice) < 50) {
   submission$SalePrice <- InvBoxCox(submission$SalePrice, BC.Lambda)
 }
 
-write.csv(submission, paste0("submissions/",format(Sys.time(), "%m-%d-%y_%H:%M"),".csv"), row.names = FALSE)
+important <- xgb.importance(feature.names, model = clf)
+head(important,20)
+
+write.csv(submission, paste0("submissions/",format(Sys.time(), "%m-%d-%y_%H:%M"),"avgXGLass.csv"), row.names = FALSE)
 
 ########################################################################################
 ########################################################################################
